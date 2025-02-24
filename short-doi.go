@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"sync"
 )
 
+// API endpoint
 const URL string = "https://shortdoi.org/"
 
 type response struct {
@@ -21,9 +23,10 @@ type response struct {
 	IsNew    bool
 }
 
-func check(e error) {
+func handleError(e error) {
 	if e != nil {
-		panic(e)
+		fmt.Println("Error:", e)
+		os.Exit(1)
 	}
 }
 
@@ -98,23 +101,27 @@ func main() {
 		// check if we have a DOI input
 		longDOIs := flag.Args()
 		if len(longDOIs) > 0 {
-			if shortDOI, e := GetShortDOI(longDOIs[0]); e != nil {
-				fmt.Println(e)
-				os.Exit(1)
-			} else {
-				fmt.Println(shortDOI)
-				os.Exit(0)
+			longDOI := longDOIs[0] // we take only the first input parameter
+			m := r.FindString(longDOI)
+			if m == "" {
+				handleError(errors.New("Please provide a valid DOI"))
 			}
+
+			shortDOI, e := GetShortDOI(longDOI)
+			handleError(e)
+
+			fmt.Println(shortDOI)
+			os.Exit(0)
 		}
 
-		fmt.Println("Either an input file must be given or a DOI should be provided as input.")
+		fmt.Println("Please provide an input file or a DOI.")
 		flag.Usage()
 		os.Exit(1)
 	}
 
 	// open file for reading
 	f, err := os.Open(inFile)
-	check(err)
+	handleError(err)
 
 	defer f.Close()
 
@@ -125,7 +132,7 @@ func main() {
 	var out *os.File
 	if outFile != "" {
 		out, err = os.Create(outFile)
-		check(err)
+		handleError(err)
 	}
 
 	f.Seek(0, 0)
