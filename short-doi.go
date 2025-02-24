@@ -28,21 +28,20 @@ func check(e error) {
 }
 
 // Return the short doi received from shortdoi.org for long `doi`.
-func GetShortDOI(doi string) string {
+func GetShortDOI(doi string) (string, error) {
 	doi = strings.ReplaceAll(doi, `\`, "")
 	resp, err := http.Get(URL + doi + "?format=json")
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	var result response
 	body, err := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &result); err != nil {
-		fmt.Println(doi)
-		panic(err)
+		return "", err
 	}
-	return result.ShortDOI
+	return result.ShortDOI, nil
 }
 
 // Get short DOIs for each DOI found in the file `f`.
@@ -62,11 +61,14 @@ func getShortDOIs(f *os.File) map[string]string {
 			wg.Add(1)
 			go func(doi string) {
 				defer wg.Done()
-				shortDoi := GetShortDOI(doi)
+				shortDOI, e := GetShortDOI(doi)
+				if e != nil {
+					shortDOI = doi
+				}
 
 				lock.Lock()
 				defer lock.Unlock()
-				doiMap[doi] = shortDoi
+				doiMap[doi] = shortDOI
 			}(m)
 		}
 	}
@@ -93,7 +95,21 @@ func main() {
 	flag.Parse()
 
 	if inFile == "" {
-		panic("An input file must be provided!")
+		// check if we have a DOI input
+		longDOIs := flag.Args()
+		if len(longDOIs) > 0 {
+			if shortDOI, e := GetShortDOI(longDOIs[0]); e != nil {
+				fmt.Println(e)
+				os.Exit(1)
+			} else {
+				fmt.Println(shortDOI)
+				os.Exit(0)
+			}
+		}
+
+		fmt.Println("Either an input file must be given or a DOI should be provided as input.")
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	// open file for reading
