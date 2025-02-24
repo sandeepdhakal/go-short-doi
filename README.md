@@ -10,7 +10,13 @@ Usage of ./short-doi:
 ```
 
 ## Example
-If we have a *ref.bib* file with the following reference:
+We can quickly convert a long DOI to short DOI as follows:
+```bash
+> ./short-doi 10.1016/j.cirpj.2020.02.002
+10/ghg846
+```
+
+We can also bulk convert by reading from a file. For example, if we have a *ref.bib* file with the following reference:
 
 <pre>
 @article{jones_characterising_2020,
